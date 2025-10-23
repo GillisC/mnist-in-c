@@ -88,10 +88,6 @@ mnist_image *load_mnist_images(const char *mnist_images_path, uint32_t *number_o
     header.rows = map_uint32(header.rows);
     header.cols = map_uint32(header.cols);
 
-    printf("number of images defined header: %d\n", header.num_images);
-    printf("number of rows: %d\n", header.rows);
-    printf("number of cols: %d\n", header.cols);
-
     if (header.magic_number != MNIST_IMAGE_MAGIC_NUM) {
         fprintf(stderr, "Invalid header, magic number for a MNIST image is not correct\n");
         fclose(stream);
@@ -116,7 +112,6 @@ mnist_image *load_mnist_images(const char *mnist_images_path, uint32_t *number_o
     }
 
     fclose(stream);
-
     return images;
 }
 
@@ -124,12 +119,23 @@ mnist_dataset *load_mnist_dataset(const char *mnist_label_file, const char *mnis
     uint32_t num_labels, num_images;
     uint8_t *labels = load_mnist_labels(mnist_label_file, &num_labels);
     mnist_image *images = load_mnist_images(mnist_image_file, &num_images);
-    for (uint8_t i = 0; i < 10; i++)
-    {
-        printf("label: %d = %d\n", i, labels[i]);    
+
+    if (num_labels != num_images) {
+        fprintf(stderr, "Error loading dataset, the number of images do not match the number of labels that was loaded: %d != %d", 
+                num_images, num_labels);
     }
-    print_mnist_image(&images[0]);
-    return NULL;
+
+    mnist_dataset *dataset = malloc(sizeof(mnist_dataset));
+
+    if (NULL == dataset) {
+        fprintf(stderr, "Could not allocate memory for mnist dataset");
+    } 
+
+    dataset->labels = labels;
+    dataset->images = images;
+    dataset->size = num_labels;
+
+    return dataset;
 }
 
 
