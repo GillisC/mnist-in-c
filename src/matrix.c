@@ -7,6 +7,7 @@
 #include <time.h>
 
 #include "utils.h"
+#include "gemm.h"
 
 size_t padded_cols(size_t cols, size_t element_size, size_t align_bytes)
 {
@@ -38,6 +39,8 @@ matrix *create_matrix(size_t rows, size_t cols) {
         fprintf(stderr, "Could not allocate memory for matrix");
     }
 
+    for (size_t i = 0; i < rows * cols; i++) m->data[i] = 0.0f;
+
     m->shape[0] = rows;
     m->shape[1] = cols;
     m->size = rows * cols;
@@ -62,44 +65,34 @@ matrix *create_matrix_random(size_t rows, size_t cols) {
     return m;
 }
 
-matrix *gemm(matrix *a, matrix *b, bool T_a, bool T_b) {
-    if (a->shape[1] != b->shape[0]) {
-        fprintf(stderr, "gemm: invalid dimensions of the matrices: a: [%zu, %zu], b: [%zu, %zu]",
-                a->shape[0], a->shape[1], b->shape[0], b->shape[1]);
-        return NULL;
-    }
-
-    size_t M = a->shape[0]; // rows in a
-    size_t N = b->shape[1]; // cols in b
-    size_t K = a->shape[1]; // shared dimension
-
-    matrix *c = create_matrix(M, N);
-
-    for (size_t i = 0; i < M; i++) {
-        for (size_t j = 0; j < N; j++) {
-            float sum = 0.0f;
-            for (size_t k = 0; k < K; k++) {
-                float a_val = T_a ? a->data[k * a->stride + i] : a->data[i * a->stride + k];
-                float b_val = T_b ? b->data[j * b->stride + k] : b->data[k * b->stride + j];
-                sum += a_val * b_val;
-            }
-            c->data[i * c->stride + j] = sum;
-        }
-    }
-    return c;
+void gemm_helper(matrix* c, matrix *a, matrix *b, bool T_a, bool T_b) {
+    gemmf(
+        a->data, 
+        a->stride,
+        b->data, 
+        b->stride, 
+        c->data, 
+        c->stride, 
+        a->shape[0],
+        b->shape[1], 
+        a->shape[1], 
+        1.0f, 
+        0.0f, 
+        T_a, 
+        T_b
+    );
 }
 
 void add(matrix *a, matrix *b) {
-    if (a->shape[0] != b->shape[0] || a->shape[1] != b->shape[1]) {
-        fprintf(stderr, "gemm: invalid dimensions of the matrices: a: [%zu, %zu], b: [%zu, %zu]",
+    if (a->shape[1] != b->shape[1]) {
+        fprintf(stderr, "add: invalid dimensions of the matrices: a: [%zu, %zu], b: [%zu, %zu]",
                 a->shape[0], a->shape[1], b->shape[0], b->shape[1]);
         exit(1);
     }
 
     for (size_t i = 0; i < a->shape[0]; i++) {
         for (size_t j = 0; j < a->shape[1]; j++) {
-                a->data[i * a->stride + j] +=
-                b->data[i * b->stride + j];
+                a->data[i * a->stride + j] += b->data[j];
         }
     }
 }
@@ -139,11 +132,10 @@ void relu(matrix *m) {
     }
 }
 
-
-void relu_backwards(float *delta, matrix *activated_output) {
+void relu_backwards(matrix *delta, matrix *activated_output) {
     for (size_t i = 0; i < activated_output->size; i++) {
         if (activated_output->data[i] <= 0.0f)
-            delta[i] = 0.0f;
+            delta->data[i] = 0.0f;
     }
 }
 

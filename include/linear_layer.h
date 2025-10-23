@@ -26,10 +26,10 @@ typedef struct {
 linear_layer *create_linear_layer(size_t in_features, size_t out_features);
 void init_linear_layer(linear_layer *layer);
 
-matrix* linear_layer_forward(linear_layer *layer, matrix *input);
+void linear_layer_forward(linear_layer *layer, matrix *output, matrix *input);
 
 // The size of delta_prev is layer->in_features
 // The size of delta_next is layer->out_features
-void linear_layer_backward(linear_layer *layer, float* delta_prev, float* delta_next);
+void linear_layer_backward(linear_layer *layer, matrix* delta_prev, matrix* delta_next, size_t batch_size);
 
 void linear_layer_update(linear_layer *layer, float learning_rate);
