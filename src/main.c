@@ -33,18 +33,20 @@ void shuffle_dataset_indices(size_t *indices, size_t size) {
     }
 }
 
-void report_stats(size_t curr_epoch, double elapsed_time, float acc, float loss) {
+void report_stats(size_t curr_epoch, double elapsed_time, double elapsed_time_per_image, float acc, float loss) {
     printf("=Stats==============================================\n");
-    printf("Progress: %zu / %zu\n", curr_epoch, (size_t) EPOCHS);
+    printf("Progress: %zu / %zu\n", curr_epoch + 1, (size_t) EPOCHS);
     printf("Average Accuracy: %.1f%%\n", acc * 100);
     printf("Average Loss    : %.2f\n", loss);
-    printf("Elapsed time: %f seconds\n", elapsed_time);
+    printf("Elapsed time: %.2f seconds\n", elapsed_time);
+    printf("Avg image proccessing time: %.4f ms\n", elapsed_time_per_image);
     printf("====================================================\n\n");
 }
 
 
 
 int main() {
+    srand(time(NULL));
     // input
     matrix *image_matrix = create_matrix(BATCH_SIZE, 784);
 
@@ -152,8 +154,9 @@ int main() {
         float avg_acc = (float) correct_count / (float) total_samples;
         float avg_loss = total_loss / (float) total_samples;
         double delta_time = ((double)(end - start)) / CLOCKS_PER_SEC;
+        double delta_time_per_image = (delta_time * 1000) / total_samples; 
 
-        report_stats(epoch, delta_time, avg_acc, avg_loss);
+        report_stats(epoch, delta_time, delta_time_per_image, avg_acc, avg_loss);
     }
     return 0;
 }
