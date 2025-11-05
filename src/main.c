@@ -14,7 +14,7 @@
 #define PIXEL_SCALE(x) (((float) (x)) / 255.0f)
 
 #define BATCH_SIZE 32
-#define EPOCHS 10
+#define EPOCHS 1
 
 
 void init_dataset_indices(size_t *indices, size_t size) {
@@ -60,6 +60,7 @@ int main() {
     init_linear_layer(l3);
 
     mnist_dataset *dataset = load_mnist_dataset("data/train-labels.idx1-ubyte", "data/train-images.idx3-ubyte");
+    mnist_dataset *validation_dataset = load_mnist_dataset("data/t10k-labels.idx1-ubyte", "data/t10k-images.idx3-ubyte");
 
     float lr = 0.01f;
 
@@ -158,5 +159,48 @@ int main() {
 
         report_stats(epoch, delta_time, delta_time_per_image, avg_acc, avg_loss);
     }
+
+    size_t validation_samples = validation_dataset->size;
+    size_t full_batches = (size_t) (validation_samples / BATCH_SIZE);
+    size_t leftover_batch_size = validation_samples - (full_batches * BATCH_SIZE);
+    int correct_count = 0;
+    size_t image_load_count = BATCH_SIZE;
+
+    // Validate the model
+    for (size_t batch = 0; batch <= full_batches; batch++) {
+
+        if (batch == full_batches && leftover_batch_size != 0) {
+            image_load_count = leftover_batch_size;
+        }
+        // load a batch using contiguous shuffled indices
+        size_t base = batch * BATCH_SIZE;
+        for (size_t b = 0; b < image_load_count; b++) {
+            labels[b] = validation_dataset->labels[base + b];
+
+            // Copy pixels from dataset into the input matrix
+            for (int p = 0; p < MNIST_IMAGE_SIZE; p++) {
+                image_matrix->data[b * image_matrix->stride + p] =
+                    PIXEL_SCALE(validation_dataset->images[base + b].pixels[p]);
+            }
+        }
+
+        // Forward
+        linear_layer_forward(l1, out1, image_matrix);
+        relu(out1);
+        linear_layer_forward(l2, out2, out1);
+        relu(out2);
+        linear_layer_forward(l3, out3, out2);
+        softmax(out3);
+
+        // accumulate metrics per sample
+        for (size_t b = 0; b < image_load_count; b++) {
+            size_t correct_label = (size_t) labels[b];
+            float *row = &out3->data[b * out3->stride];
+            size_t pred = max(row, out3->shape[1]);
+            if (pred == correct_label) correct_count++;
+        }
+    }
+    float val_accuracy = (float) correct_count / validation_samples;
+    printf("Validation Accuracy: %.1f%%\n", val_accuracy * 100);
     return 0;
 }
