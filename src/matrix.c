@@ -20,29 +20,29 @@ size_t padded_cols(size_t cols, size_t element_size, size_t align_bytes)
 
 matrix *create_matrix(size_t rows, size_t cols) {
     matrix *m = malloc(sizeof(matrix));
+    if (!m) {
+        fprintf(stderr, "\nMatrix allocation failed");
+        exit(1);
+    }
 
     size_t alignment_factor = 32;
-    size_t total_bytes;
+    size_t stride = ((cols * sizeof(float) + alignment_factor - 1) / alignment_factor) * (alignment_factor / sizeof(float));
+    size_t total_bytes = rows * stride * sizeof(float);
 
-    if (cols * sizeof(float) % alignment_factor != 0) {
-        total_bytes = rows * cols * sizeof(float);
-        m->stride = cols;
-    }
-    else {
-        size_t cols_padded = padded_cols(cols, sizeof(float), alignment_factor);
-        total_bytes = rows * cols_padded * sizeof(float);
-        m->stride = cols_padded;
+    if (total_bytes % alignment_factor != 0) {
+        total_bytes = ((total_bytes + alignment_factor - 1) / alignment_factor) * alignment_factor;
     }
 
     m->data = (float*) (aligned_alloc(alignment_factor, total_bytes));
-    if (NULL == m->data) {
+    if (!m->data) {
         fprintf(stderr, "Could not allocate memory for matrix");
     }
 
-    for (size_t i = 0; i < rows * cols; i++) m->data[i] = 0.0f;
+    for (size_t i = 0; i < rows * stride; i++) m->data[i] = 0.0f;
 
     m->shape[0] = rows;
     m->shape[1] = cols;
+    m->stride = stride;
     m->size = rows * cols;
     return m;
 }
@@ -65,7 +65,11 @@ matrix *create_matrix_random(size_t rows, size_t cols) {
     return m;
 }
 
-void gemm_helper(matrix* c, matrix *a, matrix *b, bool T_a, bool T_b) {
+void gemm_helper(matrix* c, matrix *a, matrix *b, double alpha, double beta, bool T_a, bool T_b) {
+    int M = T_a ? a->shape[1] : a->shape[0];   // rows of op(A)
+    int K = T_a ? a->shape[0] : a->shape[1];   // inner dimension
+    int N = T_b ? b->shape[0] : b->shape[1];   // cols of op(B)
+
     gemmf(
         a->data, 
         a->stride,
@@ -73,11 +77,11 @@ void gemm_helper(matrix* c, matrix *a, matrix *b, bool T_a, bool T_b) {
         b->stride, 
         c->data, 
         c->stride, 
-        a->shape[0],
-        b->shape[1], 
-        a->shape[1], 
-        1.0f, 
-        0.0f, 
+        M,
+        N,
+        K, 
+        alpha, 
+        beta, 
         T_a, 
         T_b
     );

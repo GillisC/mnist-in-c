@@ -13,7 +13,7 @@ typedef struct {
 matrix *create_matrix(size_t rows, size_t cols);
 matrix *create_matrix_with_data(size_t rows, size_t cols, void* data);
 matrix *create_matrix_random(size_t rows, size_t cols);
-void gemm_helper(matrix *c, matrix *a, matrix *b, bool T_a, bool T_b);
+void gemm_helper(matrix *c, matrix *a, matrix *b, double alpha, double beta, bool T_a, bool T_b);
 void add(matrix *a, matrix *b);
 void softmax(matrix *m);
 void relu(matrix *m);

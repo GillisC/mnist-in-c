@@ -13,8 +13,8 @@
 
 #define PIXEL_SCALE(x) (((float) (x)) / 255.0f)
 
-#define BATCH_SIZE 32
-#define EPOCHS 1
+#define BATCH_SIZE 64
+#define EPOCHS 20
 
 
 void init_dataset_indices(size_t *indices, size_t size) {
